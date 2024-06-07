@@ -34,8 +34,9 @@ class _HistoryOverviewScreenState extends State<HistoryOverviewScreen> {
             ),
             TextButton(
               onPressed: () {
-                String budgetString = _budgetController.text.replaceAll(',', '');
-                budget = double.tryParse(budgetString)?? 0.0;
+                String budgetString = _budgetController.text.replaceAll(
+                    ',', '');
+                budget = double.tryParse(budgetString) ?? 0.0;
                 Navigator.of(context).pop();
               },
               child: const Text('Set'),
@@ -48,7 +49,8 @@ class _HistoryOverviewScreenState extends State<HistoryOverviewScreen> {
     if (budget > 0) { // Ensure budget is greater than 0 before navigating
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ProductListScreen(budget: budget)),
+        MaterialPageRoute(
+            builder: (context) => ProductListScreen(budget: budget)),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -61,7 +63,7 @@ class _HistoryOverviewScreenState extends State<HistoryOverviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History Overview'),
+        title: const Text('Budget Overview'),
         backgroundColor: Colors.blueAccent.shade100,
       ),
       body: Stack(
@@ -87,17 +89,21 @@ class _HistoryOverviewScreenState extends State<HistoryOverviewScreen> {
                       elevation: 2.0,
                       margin: const EdgeInsets.all(8.0),
                       child: ExpansionTile(
+                        key: UniqueKey(), // Add UniqueKey here
                         title: Text(savedItem.name), // Display the saved name
                         children: [
                           ...savedItem.products.map((product) {
                             return ListTile(
-                              title: Text('${product.name} x${product.quantity}'),
+                              title: Text(
+                                  '${product.name} x${product.quantity}'),
                               subtitle: Text(
-                                  'Total: ₱${(product.price * product.quantity).toStringAsFixed(2)}'),
+                                  'Total: ₱${(product.price * product.quantity)
+                                      .toStringAsFixed(2)}'),
                             );
                           }).toList(),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
@@ -116,19 +122,6 @@ class _HistoryOverviewScreenState extends State<HistoryOverviewScreen> {
                       ),
                     );
                   },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton(
-                  onPressed: _navigateToProductListScreen,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(200, 50),
-                    backgroundColor: Colors.blueAccent,
-                    foregroundColor: Colors.white,
-                    textStyle: const TextStyle(fontSize: 20),
-                  ),
-                  child: const Text('Manage Budget'),
                 ),
               ),
             ],

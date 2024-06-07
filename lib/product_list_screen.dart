@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'product.dart'; // Make sure to import the updated product.dart file
 import 'history_screen.dart';
 
-
 class ProductListScreen extends StatefulWidget {
   final double budget;
 
@@ -14,73 +13,96 @@ class ProductListScreen extends StatefulWidget {
 
 class _ProductListScreenState extends State<ProductListScreen> {
   final List<Product> _products = [];
-  final List<Product> _filteredProducts = [];
+  List<Product> _filteredProducts = [];
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _quantityController = TextEditingController();
   double _totalExpenses = 0.0;
   late double _budget;
   final List<HistoryItem> _history = [];
+  late double _initialBudget;
 
   @override
   void initState() {
     super.initState();
     _budget = widget.budget;
+    _initialBudget = widget.budget;
   }
-
 
   void _addProduct() {
     final name = _nameController.text;
     final price = double.tryParse(_priceController.text) ?? 0.0;
-    final quantity = int.tryParse(_quantityController.text) ?? 1;
+    final quantity = int.tryParse(_quantityController.text) ?? 1; // Default to 1 if no quantity provided
 
-    //Error Handling for When items have exceeded the budget
-    if (name.isNotEmpty && price > 0 && quantity > 0) {
-      if (_budget - (price * quantity) < 0) {
-        showDialog(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              title: const Text('Budget Exceeded'),
-              content: const Text(
-                  'This is the hardest part remove some on your cart and follow your set budget. You are not rich enough'),
-              actions: [
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
-            );
-          },
-        );
-        return;
-      }
-
-      setState(() {
-        _products.add(Product(name, price, quantity));
-        _totalExpenses += price * quantity;
-        _budget -= price * quantity;
-      });
-
-      _nameController.clear();
-      _priceController.clear();
-      _quantityController.clear();
+    // Error handling for missing product name or price
+    if (name.isEmpty || price <= 0) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Input Error'),
+            content: const Text('Please fill out the product name and a valid price.'),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
     }
+
+    // Error handling for when items have exceeded the budget
+    if (_budget - (price * quantity) < 0) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Budget Exceeded'),
+            content: const Text(
+                'Remove some items from your cart to stay within your budget.'),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    setState(() {
+      _products.add(Product(name, price, quantity));
+      _filteredProducts = _products; // Update the filtered products list to include the new product
+      _totalExpenses += price * quantity;
+      _budget -= price * quantity;
+    });
+
+    _nameController.clear();
+    _priceController.clear();
+    _quantityController.clear();
   }
 
   void _deleteProduct(int index) {
     setState(() {
-      final product = _products[index];
+      final product = _filteredProducts[index];
       _totalExpenses -= product.price * product.quantity;
       _budget += product.price * product.quantity;
-      _products.removeAt(index);
+      _products.remove(product);
+      _filteredProducts.removeAt(index);
     });
   }
 
   void _editProduct(int index) {
-    final product = _products[index];
+    final product = _filteredProducts[index];
     _nameController.text = product.name;
     _priceController.text = product.price.toString();
     _quantityController.text = product.quantity.toString();
@@ -121,23 +143,43 @@ class _ProductListScreenState extends State<ProductListScreen> {
               onPressed: () {
                 final name = _nameController.text;
                 final price = double.tryParse(_priceController.text) ?? 0.0;
-                final quantity = int.tryParse(_quantityController.text) ?? 1;
+                final quantity = int.tryParse(_quantityController.text) ?? 1; // Default to 1 if no quantity provided
 
-                if (name.isNotEmpty && price > 0 && quantity > 0) {
-                  setState(() {
-                    final product = _products[index];
-                    _totalExpenses -= product.price * product.quantity;
-                    _budget += product.price * product.quantity;
-                    _products[index] = Product(name, price, quantity);
-                    _totalExpenses += price * quantity;
-                    _budget -= price * quantity;
-                  });
-
-                  _nameController.clear();
-                  _priceController.clear();
-                  _quantityController.clear();
-                  Navigator.of(context).pop();
+                if (name.isEmpty || price <= 0) {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text('Input Error'),
+                        content: const Text('Please fill out the product name and a valid price.'),
+                        actions: [
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                  return;
                 }
+
+                setState(() {
+                  final product = _products[index];
+                  _totalExpenses -= product.price * product.quantity;
+                  _budget += product.price * product.quantity;
+                  _products[index] = Product(name, price, quantity);
+                  _filteredProducts = _products;
+                  _totalExpenses += price * quantity;
+                  _budget -= price * quantity;
+                });
+
+                _nameController.clear();
+                _priceController.clear();
+                _quantityController.clear();
+                Navigator.of(context).pop();
               },
             ),
           ],
@@ -177,6 +219,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ElevatedButton(
               child: const Text('Save'),
               onPressed: () {
+                setState(() {
+                  _filteredProducts = _products.where((product) {
+                    return product.price >= 0 && product.price <= _initialBudget;
+                  }).toList(); // Filter products based on the initial budget
+                });
                 Navigator.of(context).pop();
               },
             ),
@@ -188,16 +235,34 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   void _applyPriceRangeFilter(double minPrice, double maxPrice) {
     setState(() {
-      _filteredProducts.clear(); // Clear the existing filtered list
-      _products.forEach((product) {
-        if (product.price >= minPrice && product.price <= maxPrice) {
-          _filteredProducts.add(product); // Add the product to the filtered list if it meets the criteria
-        }
-      });
+      _filteredProducts = _products.where((product) {
+        return product.price >= minPrice && product.price <= maxPrice;
+      }).toList();
     });
   }
 
   void _saveHistory() {
+    if (_products.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('No Products'),
+            content: const Text('Please add at least one product before saving to history.'),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) {
@@ -209,7 +274,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
             children: [
               TextField(
                 controller: _historyNameController,
-                decoration: const InputDecoration(labelText: 'Budget Name'),
+                decoration: const InputDecoration(labelText: 'History Name'),
               ),
             ],
           ),
@@ -222,18 +287,27 @@ class _ProductListScreenState extends State<ProductListScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                final historyName = _historyNameController.text;
+                final historyName = _historyNameController.text.trim();
                 if (historyName.isNotEmpty) {
                   setState(() {
-                    _history.add(HistoryItem(historyName, _products));
+                    _history.add(HistoryItem(historyName, List.from(_products)));
                   });
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Close the dialog
 
-                  // Navigate to HistoryOverviewScreen with the current history
+                  // Clear the text fields after saving to history
+                  _nameController.clear();
+                  _priceController.clear();
+                  _quantityController.clear();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('History saved successfully.')),
+                  );
+
+                  // Navigate to SavedHistoryScreen with updated history
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => HistoryOverviewScreen(history: _history),
+                      builder: (context) => HistoryOverviewScreen(history: List.from(_history)),
                     ),
                   );
                 } else {
@@ -249,6 +323,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
       },
     );
   }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -262,8 +338,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
               showDialog(
                 context: context,
                 builder: (context) {
-                  double minPrice = 0.0;
-                  double maxPrice = 0.0;
+                  double minPrice = 0.0; // Default minimum price
+                  double maxPrice = _initialBudget; // Set default maximum price to the initial budget amount
 
                   return AlertDialog(
                     title: const Text('Price Range Filtering'),
@@ -278,10 +354,11 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           },
                         ),
                         TextField(
+                          controller: TextEditingController(text: maxPrice.toString()), // Set default max price
                           decoration: const InputDecoration(labelText: 'Maximum Price'),
                           keyboardType: TextInputType.number,
                           onChanged: (value) {
-                            maxPrice = double.tryParse(value) ?? 0.0;
+                            maxPrice = double.tryParse(value) ?? _initialBudget;
                           },
                         ),
                       ],
@@ -405,9 +482,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
                     child: ListView.builder(
                       shrinkWrap: true,
-                      itemCount: _products.length,
+                      itemCount: _filteredProducts.length, // Use the filtered list length
                       itemBuilder: (context, index) {
-                        final product = _products[index];
+                        final product = _filteredProducts[index]; // Use the filtered list
                         final Color cardColor = index % 2 == 0
                             ? Colors.green.shade50
                             : Colors.green.shade100;

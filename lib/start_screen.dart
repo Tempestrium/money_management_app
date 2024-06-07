@@ -1,8 +1,58 @@
 import 'package:flutter/material.dart';
-import 'history_screen.dart';
+import 'product_list_screen.dart'; // Make sure to import ProductListScreen
 
-class StartScreen extends StatelessWidget {
+class StartScreen extends StatefulWidget {
   const StartScreen({Key? key}) : super(key: key);
+
+  @override
+  _StartScreenState createState() => _StartScreenState();
+}
+
+class _StartScreenState extends State<StartScreen> {
+  final _budgetController = TextEditingController();
+
+  void _navigateToProductListScreen() async {
+    double budget = 0.0; // Default budget
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Set Budget'),
+          content: TextField(
+            controller: _budgetController,
+            decoration: const InputDecoration(labelText: 'Budget'),
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                String budgetString = _budgetController.text.replaceAll(',', '');
+                budget = double.tryParse(budgetString)?? 0.0;
+                Navigator.of(context).pop();
+              },
+              child: const Text('Set'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (budget > 0) { // Ensure budget is greater than 0 before navigating
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ProductListScreen(budget: budget)),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid budget.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,13 +77,7 @@ class StartScreen extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 40.0),
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const HistoryOverviewScreen(history: [],)),
-                      );
-                    },
+                    onPressed: _navigateToProductListScreen,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(200, 50), // Set the minimum size
                       backgroundColor: Colors.blueAccent, // Set the background color
@@ -42,7 +86,7 @@ class StartScreen extends StatelessWidget {
                         fontSize: 20, // Set the font size
                       ),
                     ),
-                    child: const Text('Start Calculating!'),
+                    child: const Text('Start Calculating'),
                   ),
                 ),
               ),
